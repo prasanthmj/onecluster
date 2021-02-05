@@ -1,0 +1,121 @@
+- name: post build setup - bastion
+  hosts: all
+  become: true
+  tasks:
+    - name: Initial System Setup
+      include_role:
+         name: ../roles/system
+    - name: Users setup
+      include_role:
+         name: ../roles/users
+    - name: Add IP address of all hosts to hosts file
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item.name }}$'
+        line: "{{ item.ip }}  {{item.name}}"
+        state: present
+      with_items:
+        - name: node1
+          ip: "10.0.0.5"
+        - name: node2
+          ip: "10.0.0.6"
+        - name: node3
+          ip: "10.0.0.7"   
+        - name: node4
+          ip: "10.0.0.15"   
+        - name: node5
+          ip: "10.0.0.16"
+        - name: node6
+          ip: "10.0.0.17"
+                    
+    - name: Copy keys used to connect to nodes
+      copy:
+        src: "keys/{{item}}"
+        dest: "/home/nodeuser/.ssh/{{item}}"
+        mode: "600"
+        owner: nodeuser
+        group: nodeuser
+      with_items:
+        - nodes
+        - nodes.pub
+        
+    - name: Make sure ssh/config file exists
+      file:
+         path: /home/nodeuser/.ssh/config
+         state: touch        
+         
+    - name: Setup SSH config file for nodes
+      blockinfile: 
+         path: /home/nodeuser/.ssh/config
+         marker: "# {mark} Added through ansible scripts {{item}}"
+         block:  |
+            Host {{item}}
+                IdentityFile ~/.ssh/nodes
+                User nodeuser
+      loop:
+         - node1
+         - node2
+         - node3
+         - node4
+         - node5
+         - node6
+         
+    - name: Get RKE 
+      get_url: 
+        url: https://github.com/rancher/rke/releases/download/v1.2.1/rke_linux-amd64
+        dest: /usr/local/bin/rke
+        mode: "+x"
+    - name: Get Kubectl
+      get_url: 
+        url: "https://storage.googleapis.com/kubernetes-release/release/v1.19.3/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: "+x"
+    - name: Get Helm
+      unarchive:
+         src: https://get.helm.sh/helm-v3.3.4-linux-amd64.tar.gz
+         dest: /home/nodeuser
+         remote_src: yes
+    - name: copy helm
+      copy:
+         src: /home/nodeuser/linux-amd64/helm
+         dest: /usr/local/bin/helm
+         mode: "+x"
+         remote_src: yes    
+    - name: Creates NFS folders
+      file:
+         path: /mnt/nfs_share
+         state: directory
+         owner: nobody
+         group: nogroup
+         mode: 0777
+    - name: Install NFS
+      include_role:
+         name: geerlingguy.nfs
+      vars:
+         nfs_exports:
+            - "/mnt/nfs_share 10.0.0.0/16(rw,sync,no_subtree_check)"
+    - name: Install restic
+      apt: 
+        name: restic
+        state: latest
+        
+    - name: Install ufw
+      apt: 
+        name: ufw
+        state: latest
+        
+    - name: ufw allow ssh
+      ufw:
+        rule: allow
+        name: OpenSSH
+        
+    - name: ufw allow NFS
+      ufw:
+        rule: allow
+        port: "2049"
+        src: "10.0.0.0/16"
+        
+    - name: Enable UFW
+      ufw:
+          state: enabled
+       

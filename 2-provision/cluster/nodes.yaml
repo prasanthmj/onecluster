@@ -1,0 +1,26 @@
+- name: post build setup - nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Initial System Setup
+      include_role:
+         name: ../roles/system
+    - name: Users setup
+      include_role:
+         name: ../roles/users  
+         
+    - name: Install docker
+      include_role:
+         name: geerlingguy.docker 
+      vars: 
+         docker_users: 
+            - "{{ deploy_user_name }}"      
+                   
+    - name: Set authorized key taken from file
+      ansible.posix.authorized_key:
+        user: nodeuser
+        state: present
+        key: "{{ lookup('file', '../bastion/keys/nodes.pub') }}"
+    - name: Enable UFW firewall
+      include_role:
+        name: ../roles/ufw    
