@@ -18,7 +18,7 @@ resource "hcloud_server" "bastion" {
   image       = "ubuntu-20.04" 
   server_type = var.bastion.server_type
   location    = var.hcloud_location
-  ssh_keys    = ["hetzner1"]
+  ssh_keys    = ["access1"]
 }
 
 resource "hcloud_server_network" "server_network_bastion" {

@@ -1,3 +1,7 @@
 .DS_Store
 .terraform
 cluster.rkestate
+.env
+*.tfstate
+*.tfstate.*
+2-provision/bastion/keys

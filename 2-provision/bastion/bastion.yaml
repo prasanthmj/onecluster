@@ -31,27 +31,27 @@
     - name: Copy keys used to connect to nodes
       copy:
         src: "keys/{{item}}"
-        dest: "/home/nodeuser/.ssh/{{item}}"
+        dest: "/home/{{ deploy_user_name }}/.ssh/{{item}}"
         mode: "600"
-        owner: nodeuser
-        group: nodeuser
+        owner: "{{ deploy_user_name }}"
+        group: "{{ deploy_user_name }}"
       with_items:
         - nodes
         - nodes.pub
         
     - name: Make sure ssh/config file exists
       file:
-         path: /home/nodeuser/.ssh/config
+         path: "/home/{{ deploy_user_name }}/.ssh/config"
          state: touch        
          
     - name: Setup SSH config file for nodes
       blockinfile: 
-         path: /home/nodeuser/.ssh/config
+         path: "/home/{{ deploy_user_name }}/.ssh/config"
          marker: "# {mark} Added through ansible scripts {{item}}"
          block:  |
             Host {{item}}
                 IdentityFile ~/.ssh/nodes
-                User nodeuser
+                User {{ deploy_user_name }}
       loop:
          - node1
          - node2
@@ -73,11 +73,11 @@
     - name: Get Helm
       unarchive:
          src: https://get.helm.sh/helm-v3.3.4-linux-amd64.tar.gz
-         dest: /home/nodeuser
+         dest: "/home/{{ deploy_user_name }}"
          remote_src: yes
     - name: copy helm
       copy:
-         src: /home/nodeuser/linux-amd64/helm
+         src: "/home/{{ deploy_user_name }}/linux-amd64/helm"
          dest: /usr/local/bin/helm
          mode: "+x"
          remote_src: yes    
